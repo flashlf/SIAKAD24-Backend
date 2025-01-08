@@ -1,0 +1,45 @@
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Output of the go command
+bin/
+tmp/
+*.out
+
+# Air specific
+.air.toml
+.air.conf
+
+# Logs
+*.log
+*.trace
+
+# Directories for dependency management
+vendor/
+
+# Ignore build artifacts
+*.o
+*.a
+*.cg
+*.p
+*.obj
+*.test
+
+# Ignore IDE/editor files
+.vscode/
+.idea/
+*.swp
+
+# Ignore OS-generated files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+*.env.*
+
+# Ignore Go modules cache
+go.sum
