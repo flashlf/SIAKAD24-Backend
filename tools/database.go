@@ -2,10 +2,13 @@ package tools
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
 
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type StudentDetails struct {
@@ -35,7 +38,9 @@ type DatabaseInterface interface {
 
 func Init() (*Database, error) {
 	dsn := "root@/sekolah?timeout=90s"
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
 
 	if err != nil {
 		log.Error(err)
@@ -55,10 +60,25 @@ func (d *Database) GetStudentByNISN(nisn uint64) (*StudentDetails, error) {
 	return &data, nil
 }
 
-func (d *Database) GetStudents(limit int, offset int) ([]*StudentDetails, error) {
+func (d *Database) GetStudents(params interface{}, limit int, offset int) ([]*StudentDetails, error) {
 	var listStudents = []*StudentDetails{}
-	err := d.DB.Limit(limit).Offset(offset).Find(&listStudents).Order("NISN").Error
-	if err != nil {
+	fmt.Printf("Struct: %+v\n", params)
+	t := reflect.TypeOf(params)
+
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		fmt.Printf("Field: %s, Tag: %s\n", field.Name, field.Tag.Get("gorm"))
+	}
+	query := d.DB.Where(params)
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+
+	if err := query.Find(&listStudents).Order("NISN").Error; err != nil {
 		return nil, err
 	}
 

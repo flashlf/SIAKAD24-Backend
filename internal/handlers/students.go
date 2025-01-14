@@ -16,12 +16,12 @@ import (
 // Fungsi umum untuk mengambil data siswa
 func GetStudents(w http.ResponseWriter, r *http.Request, queryParams api.StudentsListParam, limit int, offset int) ([]*tools.StudentDetails, error) {
 	// Inisialisasi decoder dan parsing query params
+
 	var decoder = gorillaSchema.NewDecoder()
 	if err := decoder.Decode(&queryParams, r.URL.Query()); err != nil {
 		log.Error(err)
 		return nil, err
 	}
-
 	// Inisialisasi database
 	database, err := tools.Init()
 	if err != nil {
@@ -31,6 +31,7 @@ func GetStudents(w http.ResponseWriter, r *http.Request, queryParams api.Student
 
 	// Menentukan query berdasarkan apakah kita ingin mencari by ID atau list dengan paginasi
 	var students []*tools.StudentDetails
+
 	if queryParams.NISN != "" {
 		// Jika NISN diberikan, cari berdasarkan NISN
 		sanitizeNISN, err := strconv.ParseUint(queryParams.NISN, 10, 32)
@@ -45,7 +46,7 @@ func GetStudents(w http.ResponseWriter, r *http.Request, queryParams api.Student
 		students = append(students, student)
 	} else {
 		// Jika tidak ada NISN, ambil list dengan paginasi
-		students, err = database.GetStudents(limit, offset)
+		students, err = database.GetStudents(queryParams, limit, offset)
 		if err != nil {
 			return nil, err
 		}
@@ -55,15 +56,6 @@ func GetStudents(w http.ResponseWriter, r *http.Request, queryParams api.Student
 
 func LoadByID(w http.ResponseWriter, r *http.Request) {
 	var params = api.StudentsListParam{}
-	var decoder *gorillaSchema.Decoder = gorillaSchema.NewDecoder()
-	var err error
-	err = decoder.Decode(&params, r.URL.Query())
-
-	if err != nil {
-		log.Error(err)
-		api.InternalErrorHandler(w)
-		return
-	}
 
 	students, err := GetStudents(w, r, params, 0, 0)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -76,17 +68,6 @@ func LoadByID(w http.ResponseWriter, r *http.Request) {
 		api.InternalErrorHandler(w)
 		return
 	}
-	// var listStudents []api.StudentsResponse
-	// for _, student := range *students {
-	// 	listStudents = append(listStudents, api.StudentsResponse{
-	// 		nisn:      student.nisn,
-	// 		jurusan:   student.kd_mata_diklat,
-	// 		nama:      student.Nama_siswa,
-	// 		alamat:    student.Alamat_siswa,
-	// 		tgl_lahir: student.Tgl_lahir,
-	// 		file_foto: student.Foto_siswa,
-	// 	})
-	// }
 
 	// Jika students adalah slice of pointers ([]*tools.StudentDetails)
 	var studentValues []tools.StudentDetails
@@ -96,9 +77,15 @@ func LoadByID(w http.ResponseWriter, r *http.Request) {
 		studentValues = append(studentValues, *studentPtr) // Dereference pointer dan append ke slice
 	}
 
+	responseMessage := "Data Not Found"
+
+	if len(studentValues) > 0 {
+		responseMessage = "Data Found"
+	}
+
 	var response = api.StudentsListResponse{
 		Code:    http.StatusOK,
-		Message: "Data Found",
+		Message: responseMessage,
 		Data:    studentValues,
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -108,6 +95,7 @@ func LoadByID(w http.ResponseWriter, r *http.Request) {
 
 func LoadList(w http.ResponseWriter, r *http.Request) {
 	queryParams := api.StudentsListParam{}
+
 	// Misalnya kita ambil query params `limit` dan `offset` dari URL
 	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
 	if err != nil || limit <= 0 {
@@ -135,9 +123,16 @@ func LoadList(w http.ResponseWriter, r *http.Request) {
 			FileFoto: studentPtr.FileFoto,
 		})
 	}
+
+	responseMessage := "Data Not Found"
+
+	if len(studentList) > 0 {
+		responseMessage = "Data Found"
+	}
+
 	response := api.StudentsListResponse{
 		Code:    http.StatusOK,
-		Message: "Data Found",
+		Message: responseMessage,
 		Data:    studentList,
 	}
 	w.Header().Set("Content-Type", "application/json")

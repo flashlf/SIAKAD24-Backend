@@ -7,9 +7,10 @@ import (
 )
 
 type StudentsListParam struct {
-	NISN   string `schema:"NISN"`
-	limit  int
-	offset int
+	NISN    string `schema:"NISN" gorm:"column:NISN"`
+	Jurusan string `schema:"jurusan" gorm:"column:kd_mata_diklat"`
+	Limit   int    `schema:"limit" gorm:"-"`
+	Offset  int    `schema:"offset" gorm:"-"`
 }
 
 type StudentsResponse struct {
