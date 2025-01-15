@@ -1,4 +1,4 @@
-package handlers
+package students
 
 import (
 	"encoding/json"
@@ -65,7 +65,7 @@ func LoadByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		api.InternalErrorHandler(w)
+		api.InternalErrorHandler(w, err)
 		return
 	}
 
@@ -108,7 +108,7 @@ func LoadList(w http.ResponseWriter, r *http.Request) {
 
 	students, err := GetStudents(w, r, queryParams, limit, offset)
 	if err != nil {
-		api.InternalErrorHandler(w)
+		api.InternalErrorHandler(w, err)
 		return
 	}
 	var studentList []tools.StudentDetails

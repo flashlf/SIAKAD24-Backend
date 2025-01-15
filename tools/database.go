@@ -3,7 +3,6 @@ package tools
 import (
 	"errors"
 	"fmt"
-	"reflect"
 
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
@@ -12,7 +11,7 @@ import (
 )
 
 type StudentDetails struct {
-	Nisn     uint32 `json:"nisn" gorm:"primaryKey;column:NISN"`
+	Nisn     uint32 `json:"nisn" gorm:"primaryKey;column:NISN;<-:create"`
 	Jurusan  string `json:"jurusan" gorm:"column:kd_mata_diklat"`
 	Nama     string `json:"nama" gorm:"column:Nama_siswa"`
 	Alamat   string `json:"alamat" gorm:"column:Alamat_siswa"`
@@ -24,6 +23,19 @@ func (StudentDetails) TableName() string {
 	return "siswa"
 }
 
+type LecturerDetails struct {
+	KodeGuru       string `json:"kd_guru" gorm:"primaryKey;column:kd_guru;<-:create"`
+	KodeKompetensi string `json:"kd_kompetensi" gorm:"column:Kode_KK"`
+	Nama           string `json:"nama" gorm:"column:nm_guru"`
+	NIP            string `json:"nip" gorm:"column:NIP"`
+	Alamat         string `json:"alamat" gorm:"alamat_guru"`
+	Telp           string `json:"telp" gorm:"telp_guru"`
+}
+
+func (LecturerDetails) TableName() string {
+	return "guru"
+}
+
 var NotFoundError = errors.New("Data Not Found")
 
 type Database struct {
@@ -32,8 +44,8 @@ type Database struct {
 
 type DatabaseInterface interface {
 	GetStudentByNISN(nisn int) (*StudentDetails, error)
-	GetStudents(limit int, offset int) (*[]StudentDetails, error)
-	SetupDatabase() error
+	GetStudents(paramInterface interface{}, limit int, offset int) (*[]StudentDetails, error)
+	Init() error
 }
 
 func Init() (*Database, error) {
@@ -44,7 +56,7 @@ func Init() (*Database, error) {
 
 	if err != nil {
 		log.Error(err)
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize database connection")
 	}
 
 	return &Database{DB: db}, nil
@@ -52,7 +64,15 @@ func Init() (*Database, error) {
 
 func (d *Database) GetStudentByNISN(nisn uint64) (*StudentDetails, error) {
 	var data = StudentDetails{}
-	err := d.DB.Where("NISN = ?", nisn).First(&data).Order("NISN").Error
+
+	sqlDB, err := d.DB.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to access database")
+	}
+
+	defer sqlDB.Close()
+
+	err = d.DB.Where("NISN = ?", nisn).First(&data).Order("NISN").Error
 	if err != nil {
 		return nil, err
 	}
@@ -62,13 +82,14 @@ func (d *Database) GetStudentByNISN(nisn uint64) (*StudentDetails, error) {
 
 func (d *Database) GetStudents(params interface{}, limit int, offset int) ([]*StudentDetails, error) {
 	var listStudents = []*StudentDetails{}
-	fmt.Printf("Struct: %+v\n", params)
-	t := reflect.TypeOf(params)
 
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		fmt.Printf("Field: %s, Tag: %s\n", field.Name, field.Tag.Get("gorm"))
+	sqlDB, err := d.DB.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to access database")
 	}
+
+	defer sqlDB.Close()
+
 	query := d.DB.Where(params)
 	if limit > 0 {
 		query = query.Limit(limit)
@@ -83,4 +104,30 @@ func (d *Database) GetStudents(params interface{}, limit int, offset int) ([]*St
 	}
 
 	return listStudents, nil
+}
+
+func GetList[T any, U any](d *gorm.DB, params U, limit int, offset int) ([]*T, error) {
+	var list = []*T{}
+
+	sqlDB, err := d.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to access database")
+	}
+
+	defer sqlDB.Close()
+
+	query := d.Where(params)
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
+
+	if err := query.Find(&list).Error; err != nil {
+		return nil, err
+	}
+
+	return list, nil
 }
