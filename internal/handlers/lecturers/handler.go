@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gin-gonic/gin"
 	gorillaSchema "github.com/gorilla/schema"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -26,30 +27,30 @@ func (LecturerDetails) TableName() string {
 	return "guru"
 }
 
-func GetLecturers(w http.ResponseWriter, r *http.Request) {
+func GetLecturers(c *gin.Context) {
 	decoder := gorillaSchema.NewDecoder()
 	interfaceParam := api.TeacherParam{}
-	if err := decoder.Decode(&interfaceParam, r.URL.Query()); err != nil {
+	if err := decoder.Decode(&interfaceParam, c.Request.URL.Query()); err != nil {
 		log.Error(err)
-		api.CustomErrorHandler(w, err, http.StatusNotFound)
+		api.CustomErrorHandler(c.Writer, err, http.StatusNotFound)
 		return
 	}
 
 	db, err := tools.Init()
 	if err != nil {
 		log.Error(err)
-		api.InternalErrorHandler(w, err)
+		api.InternalErrorHandler(c.Writer, err)
 		return
 	}
 
 	var lecturer []*LecturerDetails
 
 	// Misalnya kita ambil query params `limit` dan `offset` dari URL
-	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
+	limit, err := strconv.Atoi(c.Request.URL.Query().Get("limit"))
 	if err != nil || limit <= 0 {
 		limit = 10 // Default limit
 	}
-	offset, err := strconv.Atoi(r.URL.Query().Get("offset"))
+	offset, err := strconv.Atoi(c.Request.URL.Query().Get("offset"))
 	if err != nil || offset < 0 {
 		offset = 0 // Default offset
 	}
@@ -58,12 +59,12 @@ func GetLecturers(w http.ResponseWriter, r *http.Request) {
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Warn(tools.NotFoundError)
-		api.CustomErrorHandler(w, err, http.StatusNotFound)
+		api.CustomErrorHandler(c.Writer, err, http.StatusNotFound)
 		return
 	}
 
 	if err != nil {
-		api.InternalErrorHandler(w, err)
+		api.InternalErrorHandler(c.Writer, err)
 		return
 	}
 
@@ -79,6 +80,6 @@ func GetLecturers(w http.ResponseWriter, r *http.Request) {
 		Records: len(lecturer),
 		Data:    lecturer,
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	c.Writer.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(c.Writer).Encode(response)
 }

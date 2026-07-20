@@ -8,17 +8,18 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gin-gonic/gin"
 	gorillaSchema "github.com/gorilla/schema"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
 // Fungsi umum untuk mengambil data siswa
-func GetStudents(w http.ResponseWriter, r *http.Request, queryParams api.StudentsListParam, limit int, offset int) ([]*tools.StudentDetails, error) {
+func GetStudents(c *gin.Context, queryParams api.StudentsListParam, limit int, offset int) ([]*tools.StudentDetails, error) {
 	// Inisialisasi decoder dan parsing query params
 
 	var decoder = gorillaSchema.NewDecoder()
-	if err := decoder.Decode(&queryParams, r.URL.Query()); err != nil {
+	if err := decoder.Decode(&queryParams, c.Request.URL.Query()); err != nil {
 		log.Error(err)
 		return nil, err
 	}
@@ -54,18 +55,18 @@ func GetStudents(w http.ResponseWriter, r *http.Request, queryParams api.Student
 	return students, nil
 }
 
-func LoadByID(w http.ResponseWriter, r *http.Request) {
+func LoadByID(c *gin.Context) {
 	var params = api.StudentsListParam{}
 
-	students, err := GetStudents(w, r, params, 0, 0)
+	students, err := GetStudents(c, params, 0, 0)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Warn(tools.NotFoundError)
-		api.CustomErrorHandler(w, err, http.StatusNotFound)
+		api.CustomErrorHandler(c.Writer, err, http.StatusNotFound)
 		return
 	}
 
 	if err != nil {
-		api.InternalErrorHandler(w, err)
+		api.InternalErrorHandler(c.Writer, err)
 		return
 	}
 
@@ -88,27 +89,26 @@ func LoadByID(w http.ResponseWriter, r *http.Request) {
 		Message: responseMessage,
 		Data:    studentValues,
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-
+	c.Writer.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(c.Writer).Encode(response)
 }
 
-func LoadList(w http.ResponseWriter, r *http.Request) {
+func LoadList(c *gin.Context) {
 	queryParams := api.StudentsListParam{}
 
 	// Misalnya kita ambil query params `limit` dan `offset` dari URL
-	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
+	limit, err := strconv.Atoi(c.Request.URL.Query().Get("limit"))
 	if err != nil || limit <= 0 {
 		limit = 10 // Default limit
 	}
-	offset, err := strconv.Atoi(r.URL.Query().Get("offset"))
+	offset, err := strconv.Atoi(c.Request.URL.Query().Get("offset"))
 	if err != nil || offset < 0 {
 		offset = 0 // Default offset
 	}
 
-	students, err := GetStudents(w, r, queryParams, limit, offset)
+	students, err := GetStudents(c, queryParams, limit, offset)
 	if err != nil {
-		api.InternalErrorHandler(w, err)
+		api.InternalErrorHandler(c.Writer, err)
 		return
 	}
 	var studentList []tools.StudentDetails
@@ -135,6 +135,6 @@ func LoadList(w http.ResponseWriter, r *http.Request) {
 		Message: responseMessage,
 		Data:    studentList,
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	c.Writer.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(c.Writer).Encode(response)
 }

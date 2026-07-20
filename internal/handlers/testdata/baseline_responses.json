@@ -1,0 +1,97 @@
+{
+  "_captured_at": "2026-07-19T23:44:00+07:00",
+  "_captured_from": "go-chi server (cmd/api/main.go), MySQL sekolah schema, siswa=9 rows, guru=4 rows",
+  "endpoints": [
+    {
+      "name": "student_list_default",
+      "request": "GET /student/list",
+      "status": 200,
+      "content_type": "application/json",
+      "content_length": 1369,
+      "content_encoding": null,
+      "body": {"code":200,"info":"Data Found","data":[{"nisn":581928,"jurusan":"TI","nama":"Ade Reza Fadilah","alamat":"Jalan. Gongseng Raya No 6","tgl_lahir":"2015-02-02","file_foto":"ade.jpg"},{"nisn":582312,"jurusan":"TI","nama":"Muhamad mika","alamat":"Jl. sepakat 8, Gg Dumay No 13","tgl_lahir":"1991-02-05","file_foto":"Koala.jpg"},{"nisn":583621,"jurusan":"TI","nama":"Urip Elviana Yusuf","alamat":"Jln. Protokol Ip Server, Router Cisco","tgl_lahir":"1990-01-01","file_foto":"ana.jpg"},{"nisn":587173,"jurusan":"TI","nama":"Risky Akbar","alamat":"Jl. Gongseng Raya No.20 , Cilangkap","tgl_lahir":"1997-02-04","file_foto":"risky.jpg"},{"nisn":588120,"jurusan":"TI","nama":"Adesta Gumay","alamat":"Jl. Kupu - Kupu no. 16 Cilangkap","tgl_lahir":"1998-01-05","file_foto":"eta.jpg"},{"nisn":588332,"jurusan":"TI","nama":"Laras Hani Ariyati","alamat":"Jl. Pendekar III Taman Mini","tgl_lahir":"1997-01-12","file_foto":"laras.jpg"},{"nisn":588413,"jurusan":"TI","nama":"Rosmawati","alamat":"Cibubur Komp. Duta Block D ","tgl_lahir":"1997-06-13","file_foto":"rosma.jpg"},{"nisn":588881,"jurusan":"TI","nama":"Firman Teguh Prabowo","alamat":"Jln. Gempol Raya no. 16 Cipayung","tgl_lahir":"1997-10-21","file_foto":"firman.jpg"},{"nisn":598199,"jurusan":"TI","nama":"Mas Kukuh Prakoso","alamat":"Jl. Kampung Pulo No.13, Jakarta Timur","tgl_lahir":"1994-04-09","file_foto":"kukuh.jpg"}]},
+      "notes": "9 rows returned, no limit applied even though default limit should be 10 (9<10 so all returned) -- consistent with default limit=10/offset=0"
+    },
+    {
+      "name": "student_list_invalid_limit",
+      "request": "GET /student/list?limit=abc",
+      "status": 500,
+      "content_type": "application/json",
+      "content_length": 96,
+      "content_encoding": null,
+      "body": {"code":500,"info":"An Unexpected Error Occured. schema: error converting value for \"limit\""},
+      "notes": "NOTE: invalid limit=abc causes gorilla/schema decode error -> 500, NOT a fallback to default limit=10. This happens before the strconv.Atoi(limit) fallback logic ever runs, because GetStudents() calls decoder.Decode(&queryParams, r.URL.Query()) first and StudentsListParam.Limit is typed int -- decode failure short-circuits with InternalErrorHandler. This is a real quirk that MUST be replicated exactly (do not 'fix' it to default gracefully)."
+    },
+    {
+      "name": "student_list_by_nisn_query_param",
+      "request": "GET /student/list?NISN=581928",
+      "status": 200,
+      "content_type": "application/json",
+      "content_length": 183,
+      "content_encoding": null,
+      "body": {"code":200,"info":"Data Found","data":[{"nisn":581928,"jurusan":"TI","nama":"Ade Reza Fadilah","alamat":"Jalan. Gongseng Raya No 6","tgl_lahir":"2015-02-02","file_foto":"ade.jpg"}]}
+    },
+    {
+      "name": "student_detail_by_nisn",
+      "request": "GET /student/detail?NISN=581928",
+      "status": 200,
+      "content_type": "application/json",
+      "content_length": 183,
+      "content_encoding": null,
+      "body": {"code":200,"info":"Data Found","data":[{"nisn":581928,"jurusan":"TI","nama":"Ade Reza Fadilah","alamat":"Jalan. Gongseng Raya No 6","tgl_lahir":"2015-02-02","file_foto":"ade.jpg"}]},
+      "notes": "data is an array wrapping a single result, even though /student/detail conceptually returns one record -- deliberately preserved quirk"
+    },
+    {
+      "name": "student_detail_limit_offset_ignored",
+      "request": "GET /student/detail?NISN=581928&limit=1",
+      "status": 200,
+      "content_type": "application/json",
+      "content_length": 183,
+      "content_encoding": null,
+      "body": {"code":200,"info":"Data Found","data":[{"nisn":581928,"jurusan":"TI","nama":"Ade Reza Fadilah","alamat":"Jalan. Gongseng Raya No 6","tgl_lahir":"2015-02-02","file_foto":"ade.jpg"}]},
+      "notes": "identical to student_detail_by_nisn -- proves limit/offset query params are ignored by /student/detail (LoadByID always calls GetStudents with limit=0, offset=0 hardcoded)"
+    },
+    {
+      "name": "student_detail_invalid_nisn",
+      "request": "GET /student/detail?NISN=abc",
+      "status": 500,
+      "content_type": "application/json",
+      "content_length": 102,
+      "content_encoding": null,
+      "body": {"code":500,"info":"An Unexpected Error Occured. strconv.ParseUint: parsing \"abc\": invalid syntax"},
+      "notes": "non-numeric NISN -> 500 with strconv error message leaked into response body -- deliberately preserved quirk, not sanitized to 400"
+    },
+    {
+      "name": "teacher_list_limit_offset",
+      "request": "GET /teacher/list?limit=2&offset=0",
+      "status": 200,
+      "content_type": "application/json",
+      "content_length": 251,
+      "content_encoding": null,
+      "body": {"code":200,"info":"Data Found","records":2,"data":[{"nip":"2147483647","nama":"Drs. Yohannes","alamat":"Jln.Test 1235","telp":"813928183"},{"nip":"938129382","nama":"Drs. Adjisar M.Ipa","alamat":"Jl. Gongseng Raya No.123-09","telp":"081231738172"}]},
+      "notes": "field 'records' present (count of returned rows); 'kd_guru'/'kd_kompetensi' excluded from JSON via json:\"-\" tag"
+    },
+    {
+      "name": "student_list_trailing_slash",
+      "request": "GET /student/list/",
+      "status": 200,
+      "content_type": "application/json",
+      "content_length": 1369,
+      "content_encoding": null,
+      "redirect": false,
+      "body_identical_to": "student_list_default",
+      "notes": "chiMiddleware.StripSlashes processes this identically to /student/list with NO redirect (no 301/307) -- verified via curl: single 200 response, no Location header"
+    },
+    {
+      "name": "student_list_accept_encoding_gzip",
+      "request": "GET /student/list (header Accept-Encoding: gzip)",
+      "status": 200,
+      "content_type": "application/json",
+      "content_length": 1369,
+      "content_encoding": null,
+      "vary_header": "Accept-Encoding",
+      "body_identical_to": "student_list_default",
+      "notes": "IMPORTANT/UNEXPECTED: even when the client sends Accept-Encoding: gzip, NYTimes/gziphandler emits a 'Vary: Accept-Encoding' header but does NOT actually compress the response -- body stays full JSON, no Content-Encoding: gzip header, Content-Length unchanged at 1369. This is the real current behavior of the go-chi server and MUST be preserved (the migration keeps the exact same gziphandler library wrapped outside gin.Engine, so this behavior carries over automatically -- do not attempt to 'fix' or enable real gzip compression as part of this migration)."
+    }
+  ]
+}
